@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from utils import *
 from compute_fmatrix import ComputeFMatrix
+import matplotlib.pyplot as plt
 
 # define K
 scale = 1/4
@@ -12,9 +13,10 @@ fu = 3000 * scale
 fv = 3000 * scale
 
 K = compute_K(fu, fv, width, height)
-# R = compute_R(1*np.pi/180, -2*np.pi/180, 3*np.pi/180)
-R = compute_R(0*np.pi/180, 1*np.pi/180, 0*np.pi/180)
-t = compute_t(1, -1, 5)
+R = compute_R(1*np.pi/180, -2*np.pi/180, 5*np.pi/180)
+# R = compute_R(0*np.pi/180, 0*np.pi/180, 0*np.pi/180)
+t = compute_t(-2, -1, 5)
+# t = compute_t(0, 0, 5)
 
 print(K)
 print(R)
@@ -26,23 +28,23 @@ uv1, uv2 = generate_points(K, R, t)
 # print('F')
 # print(F)
 
-# E = E2
+
 # E, mask = cv2.findEssentialMat(
-#     points1=uv0,
-#     points2=uv1,
+#     points1=uv1,
+#     points2=uv2,
 #     cameraMatrix=K,
 #     method=cv2.RANSAC,
 #     prob=0.999,
 #     threshold=1)
 
-# _, R2, t2, mask = cv2.recoverPose(E2, points1=uv0, points2=uv1, cameraMatrix=K, mask=mask)
-# print('R2')
-# print(R2)
-# print('t2')
-# print(t2)
+# # _, R2, t2, mask = cv2.recoverPose(E2, points1=uv0, points2=uv1, cameraMatrix=K, mask=mask)
+# # print('R2')
+# # print(R2)
+# # print('t2')
+# # print(t2)
 
 # print('SVD')
-# U, d, V = np.linalg.svd(E2)
+# U, d, V = np.linalg.svd(E)
 # D = np.diag(d)
 
 # W = np.array([
@@ -78,6 +80,7 @@ F = fmatrix.compute_fmatrix(uv1, uv2)
 print(F)
 
 # draw epipolar line
+epipolar = []
 for i in range(len(uv1)):
     u = uv1[i,0]
     v = uv1[i,1]
@@ -86,35 +89,32 @@ for i in range(len(uv1)):
     l1 = F[1,0]*u + F[1,1]*v + F[1,2]
     l2 = F[2,0]*u + F[2,1]*v + F[2,2]
 
-    # l0*u2 + l1*v2 + l2 = 0
-    # u2 = -l1/l0*v2 - l2/l0
-
-    # if abs(l0) > 1e-6:
     v20 = 0
     u20 = -l1/l0*v20 - l2/l0
 
     v21 = height
     u21 = -l1/l0*v21 - l2/l0
 
-    u20 = int(u20 + 0.5)
-    v20 = int(v20 + 0.5)
+    epipolar.append([u20, u21, v20, v21])
 
-    u21 = int(u21 + 0.5)
-    v21 = int(v21 + 0.5)
+epipolar = np.array(epipolar, dtype=np.float32)
 
-    cv2.line(image2, (u20,v20), (u21,v21), color=(0,255,0))
+plt.figure('image1')
+plt.scatter(uv1[:,0], uv1[:,1], marker='o')
+plt.axis('equal')
 
-for (u,v) in uv1:
-    u = int(u + 0.5)
-    v = int(v + 0.5)
-    cv2.circle(image1, (u, v), radius=1, color=(0,255,0))
+plt.axis((0, 960, 0, 480))
+plt.gca().invert_yaxis()
 
-for (u,v) in uv2:
-    u = int(u + 0.5)
-    v = int(v + 0.5)
-    cv2.circle(image2, (u, v), radius=1, color=(0,255,0))
+plt.figure('image2')
+for e in epipolar:
+    plt.plot(e[0:2], e[2:4], c='r')
+plt.scatter(uv2[:,0], uv2[:,1], marker='o')
+plt.axis('equal')
+
+plt.axis((0, 960, 0, 480))
+plt.gca().invert_yaxis()
+
+plt.show()
 
 
-cv2.imshow('image0', image1)
-cv2.imshow('image1', image2)
-cv2.waitKey(0)

@@ -9,7 +9,7 @@ def compute_K(fu, fv, width, height):
         [fu, 0,  cu],
         [0,  fv, cv],
         [0,  0,  1]
-    ])
+    ], dtype=np.float64)
 
     return K
 
@@ -18,19 +18,19 @@ def compute_R(ax, ay, az):
         [1,          0,           0],
         [0, np.cos(ax), -np.sin(ax)],
         [0, np.sin(ax),  np.cos(ax)],
-    ])
+    ], dtype=np.float64)
 
     Ry = np.array([
         [ np.cos(ay), 0, np.sin(ay)],
         [          0, 1,          0],
         [-np.sin(ay), 0, np.cos(ay)],
-    ])
+    ], dtype=np.float64)
 
     Rz = np.array([
         [np.cos(az), -np.sin(az), 0],
         [np.sin(az),  np.cos(az), 0],
         [         0,           0, 1],
-    ])
+    ], dtype=np.float64)
 
     R = np.matmul(Rz, np.matmul(Ry, Rx))
 
@@ -41,7 +41,7 @@ def compute_t(tx, ty, tz):
         [tx],
         [ty],
         [tz],
-    ])
+    ], dtype=np.float64)
 
     return t
 
@@ -51,8 +51,8 @@ def generate_points(K, R, t):
     uv1 = []
     uv2 = []
 
-    rows = 5
-    cols = 5
+    rows = 2
+    cols = 4
     for i in range(rows):
         for j in range(cols):
             x = j - np.floor(cols/2)
@@ -73,7 +73,8 @@ def generate_points(K, R, t):
             v1 = p1[1,0] / p1[2,0]
             uv2.append([u1, v1])
 
-    uv1 = np.array(uv1)
-    uv2 = np.array(uv2)
+    uv1 = np.array(uv1, dtype=np.float64)
+    uv2 = np.array(uv2, dtype=np.float64)
 
     return uv1, uv2
+

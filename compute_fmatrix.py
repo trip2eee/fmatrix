@@ -87,8 +87,11 @@ class ComputeFMatrix:
         print(uv2[:,1].mean())
         print(np.sqrt((uv2[:,0]**2 + uv2[:,1]**2)).mean())
 
+        idx = np.arange(len(uv1))
+        # idx = np.random.permutation(idx)
+        idx = idx[:8]
 
-        F0 = self.compute_fmatrix0(uv1[:8,:], uv2[:8,:])
+        F0 = self.compute_fmatrix0(uv1[idx,:], uv2[idx,:])
         F0 = np.matmul(T2.T, np.matmul(F0, T1))
 
         return F0
