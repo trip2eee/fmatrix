@@ -53,6 +53,8 @@ def generate_points(K, R, t):
 
     rows = 4
     cols = 4
+    std_nosie = 0
+
     for i in range(rows):
         for j in range(cols):
             x = j - np.floor(cols/2)
@@ -62,15 +64,15 @@ def generate_points(K, R, t):
             xyz0 = np.array([[x, y, z]]).T
             p0 = np.matmul(K, xyz0)
             
-            u0 = p0[0,0] / p0[2,0]
-            v0 = p0[1,0] / p0[2,0]
+            u0 = p0[0,0] / p0[2,0] + np.random.randn()*std_nosie
+            v0 = p0[1,0] / p0[2,0] + np.random.randn()*std_nosie
             uv1.append([u0, v0])
 
             xyz1 = np.matmul(R, xyz0) + t
             p1 = np.matmul(K, xyz1)
 
-            u1 = p1[0,0] / p1[2,0]
-            v1 = p1[1,0] / p1[2,0]
+            u1 = p1[0,0] / p1[2,0] + np.random.randn()*std_nosie
+            v1 = p1[1,0] / p1[2,0] + np.random.randn()*std_nosie
             
             uv2.append([u1, v1])
 

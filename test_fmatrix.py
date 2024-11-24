@@ -22,6 +22,21 @@ print(K)
 print(R)
 print(t)
 
+# K
+# [[750.   0. 480.]
+#  [  0. 750. 270.]
+#  [  0.   0.   1.]]
+
+# R
+# [[ 0.99558784 -0.08774923 -0.03324032]
+#  [ 0.08710265  0.99598989 -0.02042722]
+#  [ 0.0348995   0.01744177  0.99923861]]
+
+# t
+# [[-2.]
+#  [-1.]
+#  [ 5.]]
+
 uv1, uv2 = generate_points(K, R, t)
 
 # F, mask = cv2.findFundamentalMat(uv0, uv1, cv2.FM_8POINT, ransacReprojThreshold=3, confidence=0.99)
@@ -43,39 +58,12 @@ uv1, uv2 = generate_points(K, R, t)
 # # print('t2')
 # # print(t2)
 
-# print('SVD')
-# U, d, V = np.linalg.svd(E)
-# D = np.diag(d)
-
-# W = np.array([
-#     [0, -1, 0],
-#     [1,  0, 0],
-#     [0,  0, 1]
-# ])
-# Z = np.array([
-#     [ 0, 1, 0],
-#     [-1, 0, 0],
-#     [ 0, 0, 0]
-# ])
-
-# print('R2')
-# R2 = np.matmul(np.matmul(U, W), V)
-# print(R2)
-
-# print('t2')
-# S = np.matmul(np.matmul(U, Z), U.T)
-# tx = S[1,2]
-# ty = -S[0,2]
-# tz = S[0,1]
-
-# t2 = np.array([[tx, ty, tz]]).T
-# print(t2)
 
 # image1 = np.zeros([height, width, 3], dtype=np.uint8)
 # image2 = np.zeros([height, width, 3], dtype=np.uint8)
 
 # convert points into the canonical form
-
+np.random.seed(123)
 fmatrix = ComputeFMatrix()
 F = fmatrix.compute_fmatrix(uv1, uv2, K)
 
