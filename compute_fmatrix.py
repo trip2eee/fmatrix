@@ -1,9 +1,11 @@
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 class ComputeFMatrix:
     def __init__(self):
-        pass
+        self.w_ortho = 0.0
+        self.max_iter = 15
 
     
     def normalize_points(self, uv):
@@ -13,7 +15,9 @@ class ComputeFMatrix:
         v_mean = uv[:,1].mean()
 
         N = len(uv)
-        for ui, vi in uv:
+        for i in range(N):
+            ui = uv[i,0]
+            vi = uv[i,1]
             s += np.sqrt( (ui - u_mean)**2 + (vi - v_mean)**2 )
         
         s /= N*np.sqrt(2)
@@ -70,11 +74,289 @@ class ComputeFMatrix:
 
         return F
     
-    def optimize_fmatrix(self, uv1, uv2):
-        pass
+    def compute_X(self, P1, P2, uv1, uv2):
+        N = len(uv1)
+        X = np.zeros([N, 3], dtype=np.float64)
+
+        p00, p01, p02, p03 = P2[0,:]
+        p10, p11, p12, p13 = P2[1,:]
+        p20, p21, p22, p23 = P2[2,:]
+
+        for i in range(N):
+
+            u1 = uv1[i,0]
+            v1 = uv1[i,1]
+
+            u2 = uv2[i,0]
+            v2 = uv2[i,1]
+
+            A = np.array([
+                [1, 0, -u1],
+                [0, 1, -v1],
+                [p00-u2*p20, p01-u2*p21, p02-u1*p22],
+                [p10-v2*p20, p11-v2*p21, p12-v1*p22],
+            ], dtype=np.float64)
+
+            b = np.array([
+                [0],
+                [0],
+                [-p03+u2*p23],
+                [-p13+v2*p23],
+            ], dtype=np.float64)
+
+            AtA = np.matmul(A.T, A)
+            Atb = np.matmul(A.T, b)
+
+            Xi = np.linalg.solve(AtA, Atb)
+
+            X[i,:] = Xi[:,0]
+
+            # Xi = np.append(Xi, 1).reshape([-1, 1])
+            # proj1 = np.matmul(P1, Xi)
+            # u_proj1 = proj1[0,0] / proj1[2,0]
+            # v_proj1 = proj1[1,0] / proj1[2,0]
+
+            # proj2 = np.matmul(P2, Xi)
+            # u_proj2 = proj2[0,0] / proj2[2,0]
+            # v_proj2 = proj2[1,0] / proj2[2,0]
+
+            # d1 = (u1-u_proj1)**2 + (v1-v_proj1)**2
+            # d2 = (u2-u_proj2)**2 + (v2-v_proj2)**2
+            # print(d1)
+            # print(d2)
+            
+        return X
     
-    def compute_fmatrix(self, uv1, uv2):
+    def compute_f_ortho(self, param):
+        m00, m01, m02, tx = param[0:4, 0]
+        m10, m11, m12, ty = param[4:8, 0]
+        m20, m21, m22, tz = param[8:12, 0]
+
+        f = (m00**2 + m10**2 + m20**2 - 1)**2 + \
+            (m01**2 + m11**2 + m21**2 - 1)**2 + \
+            (m02**2 + m12**2 + m22**2 - 1)**2 + \
+            (m00*m01 + m10+m11 + m20*m21)**2 + \
+            (m00*m02 + m10*m12 + m20*m22)**2 + \
+            (m01*m02 + m11*m12 + m21*m22)**2
+    
+        return f
+
+    def compute_J_ortho(self, param):
+        m00, m01, m02, tx = param[0:4, 0]
+        m10, m11, m12, ty = param[4:8, 0]
+        m20, m21, m22, tz = param[8:12, 0]
+
+        # J: 1 x (12 + 3n)
+        num_unknowns = len(param)
+        J = np.zeros([1, num_unknowns], dtype=np.float64)
+
+        J[0,  0] = 4*m00*(m00**2 + m10**2 + m20**2 - 1) + 2*m01*(m00*m01 + m10*m11 + m20*m21) + 2*m02*(m00*m02 + m10*m12 + m20*m22)
+        J[0,  1] = 2*m00*(m00*m01 + m10*m11 + m20*m21) + 4*m01*(m01**2 + m11**2 + m21**2 - 1) + 2*m02*(m01*m02 + m11*m12 + m21*m22)
+        J[0,  2] = 2*m00*(m00*m02 + m10*m12 + m20*m22) + 2*m01*(m01*m02 + m11*m12 + m21*m22) + 4*m02*(m02**2 + m12**2 + m22**2 - 1)
+        J[0,  3] = 0
+
+        J[0,  4] = 4*m10*(m00**2 + m10**2 + m20**2 - 1) + 2*m11*(m00*m01 + m10*m11 + m20*m21) + 2*m12*(m00*m02 + m10*m12 + m20*m22)
+        J[0,  5] = 2*m10*(m00*m01 + m10*m11 + m20*m21) + 4*m11*(m01**2 + m11**2 + m21**2 - 1) + 2*m12*(m01*m02 + m11*m12 + m21*m22)
+        J[0,  6] = 2*m10*(m00*m02 + m10*m12 + m20*m22) + 2*m11*(m01*m02 + m11*m12 + m21*m22) + 4*m12*(m02**2 + m12**2 + m22**2 - 1)
+        J[0,  7] = 0
         
+        J[0,  8] = 4*m20*(m00**2 + m10**2 + m20**2 - 1) + 2*m21*(m00*m01 + m10*m11 + m20*m21) + 2*m22*(m00*m02 + m10*m12 + m20*m22)
+        J[0,  9] = 2*m20*(m00*m01 + m10*m11 + m20*m21) + 4*m21*(m01**2 + m11**2 + m21**2 - 1) + 2*m22*(m01*m02 + m11*m12 + m21*m22)
+        J[0, 10] = 2*m20*(m00*m02 + m10*m12 + m20*m22) + 2*m21*(m01*m02 + m11*m12 + m21*m22) + 4*m22*(m02**2 + m12**2 + m22**2 - 1)
+        J[0, 11] = 0
+
+        return J
+
+    def compute_f_proj(self, uv1, uv2, param, i):
+        m00, m01, m02, tx = param[0:4, 0]
+        m10, m11, m12, ty = param[4:8, 0]
+        m20, m21, m22, tz = param[8:12, 0]
+
+        u1 = uv1[i,0]
+        v1 = uv1[i,1]
+
+        u2 = uv2[i,0]
+        v2 = uv2[i,1]
+
+        x = param[(12+(i*3))+0, 0]
+        y = param[(12+(i*3))+1, 0]
+        z = param[(12+(i*3))+2, 0]
+        
+        p0 = m00*x + m01*y + m02*z + tx
+        p1 = m10*x + m11*y + m12*z + ty
+        p2 = m20*x + m21*y + m22*z + tz
+
+        u1_proj = x / z
+        v1_proj = y / z
+
+        u2_proj = p0 / p2
+        v2_proj = p1 / p2
+
+        f = ((u1-u1_proj)**2 + (v1-v1_proj)**2) + ((u2-u2_proj)**2 + (v2-v2_proj)**2)
+
+        return f
+    
+    def compute_J_proj(self, uv1, uv2, param, i):
+        m00, m01, m02, tx = param[0:4, 0]
+        m10, m11, m12, ty = param[4:8, 0]
+        m20, m21, m22, tz = param[8:12, 0]
+
+        u1 = uv1[i,0]
+        v1 = uv1[i,1]
+
+        u2 = uv2[i,0]
+        v2 = uv2[i,1]
+
+        x = param[(12+(i*3))+0, 0]
+        y = param[(12+(i*3))+1, 0]
+        z = param[(12+(i*3))+2, 0]
+        
+        # J: 1 x (12 + 3n)
+        num_unknowns = len(param)
+        J = np.zeros([1, num_unknowns], dtype=np.float64)
+
+        J[0,  0] = -2*x*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  1] = -2*y*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  2] = -2*z*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  3] = -2*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+       
+        J[0,  4] = -2*x*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  5] = -2*y*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  6] = -2*z*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+        J[0,  7] = -2*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))/(m20*x + m21*y + m22*z + tz)
+       
+        J[0,  8] = 2*x*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2 + 2*x*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2
+        J[0,  9] = 2*y*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2 + 2*y*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2
+        J[0, 10] = 2*z*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2 + 2*z*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2
+        J[0, 11] = 2*(u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2 + 2*(v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2
+        
+        J[0, 12+(i*3)+0] = (u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(-2*m00/(m20*x + m21*y + m22*z + tz) + 2*m20*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2) + (v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(-2*m10/(m20*x + m21*y + m22*z + tz) + 2*m20*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2) - 2*(u1 - x/z)/z
+        J[0, 12+(i*3)+1] = (u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(-2*m01/(m20*x + m21*y + m22*z + tz) + 2*m21*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2) + (v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(-2*m11/(m20*x + m21*y + m22*z + tz) + 2*m21*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2) - 2*(v1 - y/z)/z
+        J[0, 12+(i*3)+2] = 2*x*(u1 - x/z)/z**2 + 2*y*(v1 - y/z)/z**2 + (u2 - (m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz))*(-2*m02/(m20*x + m21*y + m22*z + tz) + 2*m22*(m00*x + m01*y + m02*z + tx)/(m20*x + m21*y + m22*z + tz)**2) + (v2 - (m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz))*(-2*m12/(m20*x + m21*y + m22*z + tz) + 2*m22*(m10*x + m11*y + m12*z + ty)/(m20*x + m21*y + m22*z + tz)**2)
+
+        return J
+
+    
+    def compute_sum_f(self, uv1, uv2, param):
+        f = self.compute_f_ortho(param) * self.w_ortho
+
+        N = len(uv1)
+        for i in range(N):
+            f += self.compute_f_proj(uv1, uv2, param, i)
+
+        return f
+    
+    def optimize_fmatrix(self, F0, P1, P2, uv1, uv2):
+        
+        X = self.compute_X(P1, P2, uv1, uv2)
+        F = F0
+
+        N = len(uv1)    # the number of points
+        NUM_PARAM = 12 + (N*3)
+        
+        param = np.zeros([NUM_PARAM, 1])
+        param[:12,0] = P2.reshape([-1,1])[:,0]
+        param[12:,0] = X.reshape([-1,1])[:,0]
+        
+        sum_f = self.compute_sum_f(uv1, uv2, param)
+        mu = 1e-3
+
+        updateJ = True
+
+        for iter in range(self.max_iter):
+
+            if updateJ:
+                # J = np.zeros([1, NUM_PARAM], dtype=np.float64)
+                
+                JtJ = np.zeros([NUM_PARAM, NUM_PARAM], dtype=np.float64)
+                Jtf = np.zeros([NUM_PARAM, 1], dtype=np.float64)
+
+                J = self.compute_J_ortho(param) * self.w_ortho
+                JtJ += np.matmul(J.T, J)
+
+                f = self.compute_f_ortho(param) * self.w_ortho
+                Jtf += J.T * f
+
+                for i in range(N):
+                    J = self.compute_J_proj(uv1, uv2, param, i)
+                    JtJ += np.matmul(J.T, J)
+
+                    f = self.compute_f_proj(uv1, uv2, param, i)
+                    Jtf += J.T * f
+
+                updateJ = False
+
+            JtJ_temp = JtJ.copy()
+            for i in range(NUM_PARAM):
+                JtJ_temp[i,i] += mu * JtJ_temp[i,i]
+
+            dp = -np.linalg.solve(JtJ_temp, Jtf)
+
+            param_temp = param + dp
+            sum_f_temp = self.compute_sum_f(uv1, uv2, param_temp)
+
+            if sum_f_temp < sum_f:
+                sum_f = sum_f_temp
+                param = param_temp.copy()
+                mu *= 0.1
+                updateJ = True
+
+            else:
+                mu *= 10
+
+            print('iter:{}, sum_f:{}, sum_f_temp:{}, mu:{}'.format(iter, sum_f, sum_f_temp, mu))
+
+        X_opt = param[12:].reshape([-1, 3])
+
+        plt.figure('X')
+        plt.scatter(X[:,0], X[:,1], c='r')
+        plt.scatter(X_opt[:,0], X_opt[:,1], c='b')
+
+        P2 = param[:12].reshape([3,4])
+        print('P2')
+        print(P2)
+
+        R = P2[:, :3]
+        t = P2[:,3].reshape([3,1])
+        
+        t1 = t[0,0]
+        t2 = t[1,0]
+        t3 = t[2,0]
+
+        tx = np.array([
+            [0, -t3, t2],
+            [t3, 0, -t1],
+            [-t2, t1, 0]
+        ], dtype=np.float64)
+
+        F = np.matmul(tx, R)
+
+        print('R')
+        print(R)
+        print(np.matmul(R[:,0].T, R[:,0]))
+        print(np.matmul(R.T, R))
+
+        print('rank(F)')
+        print(np.linalg.matrix_rank(F))
+        
+        return F, X_opt
+
+    
+    def compute_fmatrix(self, uv1, uv2, K):
+        
+        # convert into canonical form
+        # P = K[I | 0] -> [I | 0]
+        # P' = K[M | m] -> [M | m]
+
+        invK = np.linalg.inv(K)
+        N = len(uv1)
+        uv1 = np.hstack([uv1, np.ones([N, 1])])
+        uv2 = np.hstack([uv2, np.ones([N, 1])])
+
+        uv1 = np.matmul(invK, uv1.T).T
+        uv2 = np.matmul(invK, uv2.T).T
+
+
         uv1, T1 = self.normalize_points(uv1)
         uv2, T2 = self.normalize_points(uv2)
 
@@ -88,11 +370,48 @@ class ComputeFMatrix:
         print(np.sqrt((uv2[:,0]**2 + uv2[:,1]**2)).mean())
 
         idx = np.arange(len(uv1))
-        # idx = np.random.permutation(idx)
+        # np.random.seed(123)
+        idx = np.random.permutation(idx)
         idx = idx[:8]
+        print(idx)
 
         F0 = self.compute_fmatrix0(uv1[idx,:], uv2[idx,:])
-        F0 = np.matmul(T2.T, np.matmul(F0, T1))
+        F = F0
 
-        return F0
+        U, d, V = np.linalg.svd(F)
+
+        ep = U[:,-1].reshape([-1,1])
+        
+        e1 = ep[0,0]
+        e2 = ep[1,0]
+        e3 = ep[2,0]
+
+        epx = np.array([
+            [0, -e3, e2],
+            [e3, 0, -e1],
+            [-e2, e1, 0]
+        ], dtype=np.float64)
+
+        t = ep
+        M = np.matmul(epx, F)
+
+        print('M0')
+        print(M)
+        print(np.matmul(M.T, M))
+
+        P1 = np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+        ], dtype=np.float64)
+        P2 = np.hstack([M, t])
+
+        F, X = self.optimize_fmatrix(F, P1, P2, uv1, uv2)
+
+        F = np.matmul(T2.T, np.matmul(F, T1))
+
+        # convert back
+        F = np.matmul(invK.T, np.matmul(F, invK))
+
+        return F
 

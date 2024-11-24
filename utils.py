@@ -51,7 +51,7 @@ def generate_points(K, R, t):
     uv1 = []
     uv2 = []
 
-    rows = 2
+    rows = 4
     cols = 4
     for i in range(rows):
         for j in range(cols):
@@ -71,6 +71,7 @@ def generate_points(K, R, t):
 
             u1 = p1[0,0] / p1[2,0]
             v1 = p1[1,0] / p1[2,0]
+            
             uv2.append([u1, v1])
 
     uv1 = np.array(uv1, dtype=np.float64)

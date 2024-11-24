@@ -22,6 +22,34 @@ This method computes the initial fundamental matrix $\mathbf{F}_0$.
 
 Algorithm 11.1 The normalized 8-point algorithm for $\mathbf{F}$ on page 282.
 
+### compute_X()
+This method computes $\hat{X}_i$ using triangular method.
+
+$\hat{x}_i = P\hat{X}_i$
+
+$\hat{x}'_i = P'\hat{X}_i$
+
+$ u_i = x_i/z_i $
+
+$ v_i = y_i/z_i $
+
+$ u'_i = \left(p_{00} x_i + p_{01} y_i + p_{02} z_i + p_{03}\right) / \left(p_{20} x_i + p_{21} y_i + p_{22} z_i + p_{23}\right) $
+
+
+$ v'_i = \left(p_{10} x_i + p_{11} y_i + p_{12} z_i + p_{13}\right) / \left(p_{20} x_i + p_{21} y_i + p_{22} z_i + p_{23}\right) $
+
+
+Linear equation
+
+$ x_i - u_i z_i = 0$
+
+$ y_i - v_i z_i = 0$
+
+$ (p_{00} - u'_i p_{20}) x_i + (p_{01} - u'_i p_{21}) y_i + (p_{02} - u'_i p_{22}) z_i = -p_{03} + u'_i p_{23}$
+
+$ (p_{10} - v'_i p_{20}) x_i + (p_{11} - v'_i p_{21}) y_i + (p_{12} - v'_i p_{22}) z_i = -p_{13} + v'_i p_{23}$
+
+
 ### optimize_fmatrix()
 
 Algorithm 11.3. The Gold Standard algorithm for estimating F from image correspondences on page 285.

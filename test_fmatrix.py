@@ -71,11 +71,13 @@ uv1, uv2 = generate_points(K, R, t)
 # t2 = np.array([[tx, ty, tz]]).T
 # print(t2)
 
-image1 = np.zeros([height, width, 3], dtype=np.uint8)
-image2 = np.zeros([height, width, 3], dtype=np.uint8)
+# image1 = np.zeros([height, width, 3], dtype=np.uint8)
+# image2 = np.zeros([height, width, 3], dtype=np.uint8)
+
+# convert points into the canonical form
 
 fmatrix = ComputeFMatrix()
-F = fmatrix.compute_fmatrix(uv1, uv2)
+F = fmatrix.compute_fmatrix(uv1, uv2, K)
 
 print(F)
 
