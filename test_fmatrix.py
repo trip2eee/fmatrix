@@ -39,29 +39,6 @@ print(t)
 
 uv1, uv2 = generate_points(K, R, t)
 
-# F, mask = cv2.findFundamentalMat(uv0, uv1, cv2.FM_8POINT, ransacReprojThreshold=3, confidence=0.99)
-# print('F')
-# print(F)
-
-
-# E, mask = cv2.findEssentialMat(
-#     points1=uv1,
-#     points2=uv2,
-#     cameraMatrix=K,
-#     method=cv2.RANSAC,
-#     prob=0.999,
-#     threshold=1)
-
-# # _, R2, t2, mask = cv2.recoverPose(E2, points1=uv0, points2=uv1, cameraMatrix=K, mask=mask)
-# # print('R2')
-# # print(R2)
-# # print('t2')
-# # print(t2)
-
-
-# image1 = np.zeros([height, width, 3], dtype=np.uint8)
-# image2 = np.zeros([height, width, 3], dtype=np.uint8)
-
 # convert points into the canonical form
 np.random.seed(123)
 fmatrix = ComputeFMatrix()

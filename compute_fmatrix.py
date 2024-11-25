@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 class ComputeFMatrix:
     def __init__(self):
         self.w_ortho = 1.0
-        self.max_iter = 15
+        self.max_iter = 20
 
     
     def normalize_points(self, uv):
@@ -77,7 +77,7 @@ class ComputeFMatrix:
     def compute_X(self, P1, P2, uv1, uv2):
         N = len(uv1)
         X = np.zeros([N, 3], dtype=np.float64)
-
+        
         p00, p01, p02, p03 = P2[0,:]
         p10, p11, p12, p13 = P2[1,:]
         p20, p21, p22, p23 = P2[2,:]
@@ -93,8 +93,8 @@ class ComputeFMatrix:
             A = np.array([
                 [1, 0, -u1],
                 [0, 1, -v1],
-                [p00-u2*p20, p01-u2*p21, p02-u1*p22],
-                [p10-v2*p20, p11-v2*p21, p12-v1*p22],
+                [p00-u2*p20, p01-u2*p21, p02-u2*p22],
+                [p10-v2*p20, p11-v2*p21, p12-v2*p22],
             ], dtype=np.float64)
 
             b = np.array([
@@ -122,8 +122,6 @@ class ComputeFMatrix:
 
             # d1 = (u1-u_proj1)**2 + (v1-v_proj1)**2
             # d2 = (u2-u_proj2)**2 + (v2-v_proj2)**2
-            # print(d1)
-            # print(d2)
             
         return X
     
@@ -314,13 +312,22 @@ class ComputeFMatrix:
             else:
                 mu *= 10
 
+            mu = min(1e10, max(1e-10, mu))
+
             print('iter:{}, sum_f:{}, sum_f_temp:{}, mu:{}'.format(iter, sum_f, sum_f_temp, mu))
 
         X_opt = param[12:].reshape([-1, 3])
 
         plt.figure('X')
-        plt.scatter(X[:,0], X[:,1], c='r')
-        plt.scatter(X_opt[:,0], X_opt[:,1], c='b')
+
+        nx = X[:,0]**2 + X[:,1]**2 + X[:,2]**2        
+        X /= np.sqrt(nx.max())
+
+        nx = X_opt[:,0]**2 + X_opt[:,1]**2 + X_opt[:,2]**2        
+        X_opt /= np.sqrt(nx.max())
+
+        plt.scatter(X[:,0], X[:,1], c='r', marker='+')
+        plt.scatter(X_opt[:,0], X_opt[:,1], c='b', marker='x')
 
         P2 = param[:12].reshape([3,4])
         print('P2')
@@ -403,10 +410,6 @@ class ComputeFMatrix:
         t = ep
         M = np.matmul(epx, F)
 
-        print('M0')
-        print(M)
-        print(np.matmul(M.T, M))
-
         P1 = np.array([
             [1, 0, 0, 0],
             [0, 1, 0, 0],
@@ -415,36 +418,6 @@ class ComputeFMatrix:
         P2 = np.hstack([M, t])
 
         F, X = self.optimize_fmatrix(F, P1, P2, uv1, uv2)
-
-
-        # decompose
-        print('SVD')
-        U, d, V = np.linalg.svd(F)
-        D = np.diag(d)
-
-        W = np.array([
-            [0, -1, 0],
-            [1,  0, 0],
-            [0,  0, 1]
-        ])
-        Z = np.array([
-            [ 0, 1, 0],
-            [-1, 0, 0],
-            [ 0, 0, 0]
-        ])
-
-        R2 = np.matmul(np.matmul(U, W), V)
-        print('R2')
-        print(R2)
-        
-        S = np.matmul(np.matmul(U, Z), U.T)
-        tx = S[1,2]
-        ty = -S[0,2]
-        tz = S[0,1]
-
-        t2 = np.array([[tx, ty, tz]]).T
-        print('t2')
-        print(t2)
 
         F = np.matmul(T2.T, np.matmul(F, T1))
 

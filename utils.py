@@ -45,15 +45,14 @@ def compute_t(tx, ty, tz):
 
     return t
 
-def generate_points(K, R, t):
+def generate_points(K, R, t, std_nosie=0):
 
     # Generate points
     uv1 = []
     uv2 = []
 
-    rows = 4
-    cols = 4
-    std_nosie = 0
+    rows = 5
+    cols = 5    
 
     for i in range(rows):
         for j in range(cols):
